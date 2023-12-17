@@ -7,7 +7,6 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { IFilament } from "./model";
 import { enrichText } from "../../utils/parsing";
-import { IVendor } from "../vendors/model";
 import { useNavigate } from "react-router-dom";
 dayjs.extend(utc);
 
@@ -28,25 +27,32 @@ export const FilamentShow: React.FC<IResourceComponentsProps> = () => {
     if (item.vendor) {
       vendorPrefix = `${item.vendor.name} - `;
     }
-    return t("filament.titles.show_title", { id: item.id, name: vendorPrefix + item.name });
+    return t("filament.titles.show_title", {
+      id: item.id,
+      name: vendorPrefix + item.name,
+      interpolation: { escapeValue: false },
+    });
   };
 
   const gotoVendor = (): undefined => {
     const URL = `/vendor/show/${record?.vendor?.id}`;
     navigate(URL);
-  }
+  };
 
   const gotoSpools = (): undefined => {
-    const URL = `/spool#filters=[{"field":"filament.id","operator":"in","value":[${record?.id}]}]`
+    const URL = `/spool#filters=[{"field":"filament.id","operator":"in","value":[${record?.id}]}]`;
     navigate(URL);
-  }
+  };
 
   return (
     <Show isLoading={isLoading} title={record ? formatTitle(record) : ""}>
       <Title level={5}>{t("filament.fields.id")}</Title>
       <NumberField value={record?.id ?? ""} />
       <Title level={5}>{t("filament.fields.vendor")}</Title>
-      <button onClick={gotoVendor} style={{ background: 'none', border: 'none', color: 'blue', cursor: 'pointer', paddingLeft: 0 }}>
+      <button
+        onClick={gotoVendor}
+        style={{ background: "none", border: "none", color: "blue", cursor: "pointer", paddingLeft: 0 }}
+      >
         {record ? record.vendor?.name : ""}
       </button>
       <Title level={5}>{t("filament.fields.registered")}</Title>
@@ -118,10 +124,13 @@ export const FilamentShow: React.FC<IResourceComponentsProps> = () => {
       <Title level={5}>{t("filament.fields.comment")}</Title>
       <TextField value={enrichText(record?.comment)} />
       <Title level={5}>{t("filament.fields.spools")}</Title>
-      <button onClick={gotoSpools} style={{ background: 'none', border: 'none', color: 'blue', cursor: 'pointer', paddingLeft: 0 }}>
+      <button
+        onClick={gotoSpools}
+        style={{ background: "none", border: "none", color: "blue", cursor: "pointer", paddingLeft: 0 }}
+      >
         {record ? formatTitle(record) : ""}
       </button>
-    </Show >
+    </Show>
   );
 };
 
