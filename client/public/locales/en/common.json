@@ -9,7 +9,7 @@
     "buttons": {
         "create": "Create",
         "save": "Save",
-	"saveAndAdd": "Save and Add",
+        "saveAndAdd": "Save and Add",
         "logout": "Log out",
         "delete": "Delete",
         "edit": "Edit",
@@ -43,6 +43,7 @@
         "editError": "Error when editing {{resource}} (status code: {{statusCode}})",
         "importProgress": "Importing: {{processed}}/{{total}}"
     },
+    "kofi": "Tip me on Ko-fi",
     "loading": "Loading",
     "version": "Version",
     "unknown": "Unknown",
@@ -192,7 +193,7 @@
             "settings_extruder_temp": "Extruder Temp",
             "settings_bed_temp": "Bed Temp",
             "color_hex": "Color",
-	    "spools": "Show Spools"
+            "spools": "Show Spools"
         },
         "fields_help": {
             "name": "Filament name, to distinguish this filament type among others from the same vendor. Should contain the color for example.",
@@ -234,12 +235,30 @@
             "vendor_updated": "This vendor has been updated by someone/something else since you opened this page. Saving will overwrite those changes!"
         }
     },
+    "home": {
+        "home": "Home"
+    },
+    "help": {
+        "help": "Help",
+        "resources": {
+            "filament": "Brands of filament. They have properties such as name, material, color, diameter, and more.",
+            "spool": "Individual physical spools of a specific filament.",
+            "vendor": "The companies that make the filament."
+        },
+        "description": "<title>Help</title><p>Here are some tips to get you started.</p><p>Spoolman holds 3 different types of data:</p><itemsHelp/><p>To enter a new spool into the database, you first need to create a <filamentCreateLink>Filament</filamentCreateLink>object for it. Once that is done, you can then create a <spoolCreateLink>Spool</spoolCreateLink> object for thatindividual spool. If you then purchase additional spools of the same filament, you can just create additionalSpool objects, and re-use the same Filament object.</p><p>You can optionally also create a <vendorCreateLink>Vendor</vendorCreateLink> object for the company that makes thefilament, if you want to track that information.</p><p>You can connect other 3D printer services to Spoolman, such as Moonraker, which can then automatically trackfilament usage and update the Spool objects for you. See the <readmeLink>Spoolman README</readmeLink>for how to do that.</p>"
+    },
     "table": {
         "actions": "Actions"
     },
     "documentTitle": {
         "default": "Spoolman",
         "suffix": " | Spoolman",
+        "home": {
+            "list": "Home | Spoolman"
+        },
+        "help": {
+            "list": "Help | Spoolman"
+        },
         "filament": {
             "list": "Filaments | Spoolman",
             "show": "#{{id}} Show Filament | Spoolman",
