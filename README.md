@@ -29,7 +29,8 @@ Spoolman includes a web-client that lets you directly manipulate all the data. I
 _The web client is translated by the community using [Weblate](https://hosted.weblate.org/projects/spoolman/)._
 
 ## Integration status
-Spoolman is still relatively new, so support isn't widespread yet, but it's being actively integrated to multiple different projects.
+Spoolman doesn't depend on any specific printer software, but to make the most out of it, you should use it together with a frontend that supports it.
+It is currently only supported in the Klipper ecosystem, with official support for the major frontends. Support for other ecosystems like Octoprint is ongoing.
 
 * ✔️ Moonraker - See the [Moonraker Documentation](https://moonraker.readthedocs.io/en/latest/configuration/#spoolman)
   * ✔️ Fluidd
@@ -52,8 +53,8 @@ Copy-paste the entire below command and run it on your machine to install Spoolm
 sudo apt-get update && \
 sudo apt-get install -y curl jq && \
 mkdir -p ./Spoolman && \
-source_url=$(curl -s https://api.github.com/repos/Donkie/Spoolman/releases/latest | jq -r ".tarball_url") && \
-curl -sSL $source_url | tar -xz --strip-components=1 -C ./Spoolman && \
+source_url=$(curl -s https://api.github.com/repos/Donkie/Spoolman/releases/latest | jq -r '.assets[] | select(.name == "spoolman.zip").browser_download_url') && \
+curl -sSL $source_url -o temp.zip && unzip temp.zip -d ./Spoolman && rm temp.zip && \
 cd ./Spoolman && \
 bash ./scripts/install_debian.sh
 ```
@@ -72,8 +73,8 @@ systemctl --user disable Spoolman
 # Download and install the new version
 mv Spoolman Spoolman_old && \
 mkdir -p ./Spoolman && \
-source_url=$(curl -s https://api.github.com/repos/Donkie/Spoolman/releases/latest | jq -r ".tarball_url") && \
-curl -sSL $source_url | tar -xz --strip-components=1 -C ./Spoolman && \
+source_url=$(curl -s https://api.github.com/repos/Donkie/Spoolman/releases/latest | jq -r '.assets[] | select(.name == "spoolman.zip").browser_download_url') && \
+curl -sSL $source_url -o temp.zip && unzip temp.zip -d ./Spoolman && rm temp.zip && \
 cp Spoolman_old/.env Spoolman/.env && \
 cd ./Spoolman && \
 bash ./scripts/install_debian.sh && \
@@ -125,6 +126,8 @@ If you want to connect with an external database instead, specify the `SPOOLMAN_
 | SPOOLMAN_DB_QUERY         | Query parameters for the database connection, e.g. set to `unix_socket=/path/to/mysql.sock` to connect using a MySQL socket. |
 | SPOOLMAN_LOGGING_LEVEL    | Logging level, any of: `CRITICAL`, `ERROR`, `WARNING`, `INFO`, `DEBUG`, defaults to `INFO`.                                  |
 | SPOOLMAN_AUTOMATIC_BACKUP | Automatic nightly DB backups for SQLite databases. Enabled by default, set to `FALSE` to disable.                            |
+| PUID                      | (*docker only*) Set the UID of the user in the docker container. Default is 1000.                                            |
+| PGID                      | (*docker only*) Set the GID of the user in the docker container. Default is 1000.                                            |
 
 ## Frequently Asked Questions (FAQs)
 ### QR Code Does not work on HTTP / The page is not served over HTTPS
