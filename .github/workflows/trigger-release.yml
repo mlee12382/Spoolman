@@ -1,0 +1,49 @@
+name: Release Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        type: choice
+        description: Version to bump
+        required: true
+        default: minor
+        options: 
+          - micro
+          - minor
+          - major
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      
+      - name: Install node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+  
+      - name: Setup PDM
+        run: |
+          pip install pdm pdm-bump
+      
+      - name: Bump version
+        run: |
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+          pdm run bump ${{ github.event.inputs.bump }}
+      
+      - name: Push
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0)
+          echo "Pushing branch master and tag $latest_tag"
+          git push --atomic origin master $latest_tag
