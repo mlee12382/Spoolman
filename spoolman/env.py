@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Optional
 from urllib import parse
 
-import pkg_resources
 from platformdirs import user_data_dir
 
 logger = logging.getLogger(__name__)
@@ -271,7 +270,12 @@ def get_version() -> str:
     Returns:
         str: The version.
     """
-    return pkg_resources.get_distribution("spoolman").version
+    # Read version from pyproject.toml, don't use pkg_resources because it requires the package to be installed
+    with Path("pyproject.toml").open(encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("version ="):
+                return line.split('"')[1]
+    return "unknown"
 
 
 def get_commit_hash() -> Optional[str]:
@@ -282,10 +286,16 @@ def get_commit_hash() -> Optional[str]:
     Returns:
         Optional[str]: The commit hash.
     """
-    commit_hash = os.getenv("GIT_COMMIT", "unknown")
-    if commit_hash == "unknown":
+    # Read commit has from build.txt
+    # commit is written as GIT_COMMIT=<hash> in build.txt
+    build_file = Path("build.txt")
+    if not build_file.exists():
         return None
-    return commit_hash
+    with build_file.open(encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("GIT_COMMIT="):
+                return line.split("=")[1].strip()
+    return None
 
 
 def get_build_date() -> Optional[datetime]:
@@ -294,10 +304,19 @@ def get_build_date() -> Optional[datetime]:
     Returns:
         Optional[datetime.datetime]: The build date.
     """
-    build_date = os.getenv("BUILD_DATE", "unknown")
-    if build_date == "unknown":
+    # Read build date has from build.txt
+    # build date is written as BUILD_DATE=<hash> in build.txt
+    build_file = Path("build.txt")
+    if not build_file.exists():
         return None
-    return datetime.fromisoformat(build_date)
+    with build_file.open(encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("BUILD_DATE="):
+                try:
+                    return datetime.fromisoformat(line.split("=")[1].strip())
+                except ValueError:
+                    return None
+    return None
 
 
 def can_write_to_data_dir() -> bool:

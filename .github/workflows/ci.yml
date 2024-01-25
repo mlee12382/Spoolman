@@ -70,6 +70,11 @@ jobs:
           rm -f .env && echo "VITE_APIURL=/api/v1" > .env.production
           npm run build
 
+      - name: Write build info
+        run: |
+          echo "GIT_COMMIT=$(git rev-parse --short HEAD)" > build.txt
+          echo "BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> build.txt
+  
       # Remove client source and keep only the built dist
       - name: Clean
         run: |
@@ -82,7 +87,7 @@ jobs:
       - name: Fix permissions
         run: |
           chmod +x scripts/*.sh
-
+      
       - name: Upload client Spoolman artifact
         uses: actions/upload-artifact@v3
         with:
