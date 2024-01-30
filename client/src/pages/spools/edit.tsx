@@ -20,25 +20,24 @@ We also need to stringify them again before sending them back to the API, which 
 the form's onFinish method. Form.Item's normalize should do this, but it doesn't seem to work.
 */
 
+enum WeightToEnter {
+  used_weight = 1,
+  remaining_weight = 2,
+  measured_weight = 3,
+}
+
 export const SpoolEdit: React.FC<IResourceComponentsProps> = () => {
   const t = useTranslate();
   const [messageApi, contextHolder] = message.useMessage();
   const [hasChanged, setHasChanged] = useState(false);
   const extraFields = useGetFields(EntityType.spool);
 
-  const { form, formProps, saveButtonProps } = useForm<ISpool, HttpError, ISpoolParsedExtras, ISpoolParsedExtras>({
+  const { form, formProps, saveButtonProps } = useForm<ISpool, HttpError, ISpool, ISpool>({
     liveMode: "manual",
     onLiveEvent() {
       // Warn the user if the spool has been updated since the form was opened
       messageApi.warning(t("spool.form.spool_updated"));
       setHasChanged(true);
-    },
-    queryOptions: {
-      select(data) {
-        return {
-          data: ParsedExtras(data.data),
-        };
-      },
     },
   });
 
@@ -47,13 +46,25 @@ export const SpoolEdit: React.FC<IResourceComponentsProps> = () => {
     resource: "filament",
   });
 
+  // Add the filament_id field to the form
+  if (formProps.initialValues) {
+    formProps.initialValues["filament_id"] = formProps.initialValues["filament"].id;
+
+    // Parse the extra fields from string values into real types
+    formProps.initialValues = ParsedExtras(formProps.initialValues);
+  }
+
   // Override the form's onFinish method to stringify the extra fields
   const originalOnFinish = formProps.onFinish;
   formProps.onFinish = (allValues: ISpoolParsedExtras) => {
     if (allValues !== undefined && allValues !== null) {
-      allValues = StringifiedExtras(allValues);
+      // Lot of stupidity here to make types work
+      const stringifiedAllValues = StringifiedExtras<ISpoolParsedExtras>(allValues);
+      originalOnFinish?.({
+        extra: {},
+        ...stringifiedAllValues,
+      });
     }
-    originalOnFinish?.(allValues);
   };
 
   const filamentOptions = queryResult.data?.data.map((item) => {
@@ -94,17 +105,17 @@ export const SpoolEdit: React.FC<IResourceComponentsProps> = () => {
     const newSelectedFilament = filamentOptions?.find((obj) => {
       return obj.value === newID;
     });
-    const newFilamentWeight = newSelectedFilament?.weight || 0;
-    const newSpoolWeight = newSelectedFilament?.spool_weight || 0;
+    const filamentHasWeight = newSelectedFilament?.weight || 0;
+    const filamentHasSpoolWeight = newSelectedFilament?.spool_weight || 0;
 
-    if (weightToEnter >= 3) {
-      if (!(newFilamentWeight && newSpoolWeight)) {
-        setWeightToEnter(2);
+    if (weightToEnter == WeightToEnter.measured_weight) {
+      if (!(filamentHasWeight && filamentHasSpoolWeight)) {
+        setWeightToEnter(WeightToEnter.remaining_weight);
       }
     }
-    if (weightToEnter >= 2) {
-      if (!newFilamentWeight) {
-        setWeightToEnter(1);
+    if (weightToEnter == WeightToEnter.remaining_weight || weightToEnter == WeightToEnter.measured_weight) {
+      if (!filamentHasWeight) {
+        setWeightToEnter(WeightToEnter.used_weight);
       }
     }
   };
@@ -120,10 +131,6 @@ export const SpoolEdit: React.FC<IResourceComponentsProps> = () => {
   const allLocations = [...(locations.data || [])];
   if (newLocation.trim() && !allLocations.includes(newLocation)) {
     allLocations.push(newLocation.trim());
-  }
-
-  if (formProps.initialValues) {
-    formProps.initialValues["filament_id"] = formProps.initialValues["filament"].id;
   }
 
   const initialUsedWeight = formProps.initialValues?.used_weight || 0;
@@ -232,14 +239,14 @@ export const SpoolEdit: React.FC<IResourceComponentsProps> = () => {
             onChange={(value) => {
               setWeightToEnter(value.target.value);
             }}
-            defaultValue={1}
+            defaultValue={WeightToEnter.used_weight}
             value={weightToEnter}
           >
-            <Radio.Button value={1}>{t("spool.fields.used_weight")}</Radio.Button>
-            <Radio.Button value={2} disabled={!filamentWeight}>
+            <Radio.Button value={WeightToEnter.used_weight}>{t("spool.fields.used_weight")}</Radio.Button>
+            <Radio.Button value={WeightToEnter.remaining_weight} disabled={!filamentWeight}>
               {t("spool.fields.remaining_weight")}
             </Radio.Button>
-            <Radio.Button value={3} disabled={!(filamentWeight && spoolWeight)}>
+            <Radio.Button value={WeightToEnter.measured_weight} disabled={!(filamentWeight && spoolWeight)}>
               {t("spool.fields.measured_weight")}
             </Radio.Button>
           </Radio.Group>
@@ -251,7 +258,7 @@ export const SpoolEdit: React.FC<IResourceComponentsProps> = () => {
             precision={1}
             formatter={numberFormatter}
             parser={numberParser}
-            disabled={weightToEnter != 1}
+            disabled={weightToEnter != WeightToEnter.used_weight}
             value={usedWeight}
             onChange={(value) => {
               weightChange(value ?? 0);
@@ -265,7 +272,7 @@ export const SpoolEdit: React.FC<IResourceComponentsProps> = () => {
             precision={1}
             formatter={numberFormatter}
             parser={numberParser}
-            disabled={weightToEnter != 2}
+            disabled={weightToEnter != WeightToEnter.remaining_weight}
             value={filamentWeight ? filamentWeight - usedWeight : 0}
             onChange={(value) => {
               weightChange(filamentWeight - (value ?? 0));
@@ -279,7 +286,7 @@ export const SpoolEdit: React.FC<IResourceComponentsProps> = () => {
             precision={1}
             formatter={numberFormatter}
             parser={numberParser}
-            disabled={weightToEnter != 3}
+            disabled={weightToEnter != WeightToEnter.measured_weight}
             value={filamentWeight && spoolWeight ? filamentWeight - usedWeight + spoolWeight : 0}
             onChange={(value) => {
               weightChange(filamentWeight - ((value ?? 0) - spoolWeight));
