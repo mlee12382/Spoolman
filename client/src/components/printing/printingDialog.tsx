@@ -16,11 +16,15 @@ import {
 import ReactToPrint from "react-to-print";
 import { useSavedState } from "../../utils/saveload";
 import { useTranslate } from "@refinedev/core";
+import { PrintSettings } from "./printing";
 
 interface PrintingDialogProps {
   items: JSX.Element[];
+  printSettings: PrintSettings;
+  setPrintSettings: (setPrintSettings: PrintSettings) => void;
   style?: string;
   extraSettings?: JSX.Element;
+  extraSettingsStart?: JSX.Element;
   visible: boolean;
   onCancel: () => void;
   title?: string;
@@ -58,41 +62,50 @@ const paperDimensions: { [key: string]: PaperDimensions } = {
   },
 };
 
-const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSettings, visible, onCancel, title }) => {
+const PrintingDialog: React.FC<PrintingDialogProps> = ({
+  items,
+  printSettings,
+  setPrintSettings,
+  style,
+  extraSettings,
+  extraSettingsStart,
+  visible,
+  onCancel,
+  title,
+}) => {
   const t = useTranslate();
 
   const [collapseState, setCollapseState] = useSavedState<string[]>("print-collapseState", []);
-  const [marginLeft, setMarginLeft] = useSavedState("print-marginLeft", 10);
-  const [marginTop, setMarginTop] = useSavedState("print-marginTop", 10);
-  const [marginRight, setMarginRight] = useSavedState("print-marginRight", 10);
-  const [marginBottom, setMarginBottom] = useSavedState("print-marginBottom", 10);
-  const [horizontalSpacing, setHorizontalSpacing] = useSavedState("print-horizontalSpacing", 0);
-  const [verticalSpacing, setVerticalSpacing] = useSavedState("print-verticalSpacing", 0);
-  const [printerMarginLeft, setPrinterMarginLeft] = useSavedState("print-printerMarginLeft", 5);
-  const [printerMarginTop, setPrinterMarginTop] = useSavedState("print-printerMarginTop", 5);
-  const [printerMarginRight, setPrinterMarginRight] = useSavedState("print-printerMarginRight", 5);
-  const [printerMarginBottom, setPrinterMarginBottom] = useSavedState("print-printerMarginBottom", 5);
-  const [paperColumns, setPaperColumns] = useSavedState("print-itemsPerRow", 3);
-  const [paperRows, setPaperRows] = useSavedState("print-rowsPerPage", 8);
-  const [skipItems, setSkipItems] = useSavedState("print-skipItems", 0);
-  const [paperSize, setPaperSize] = useSavedState("print-paperSize", "A4");
-  const [customPaperWidth, setCustomPaperWidth] = useSavedState("print-customPaperWidth", 210);
-  const [customPaperHeight, setCustomPaperHeight] = useSavedState("print-customPaperHeight", 297);
   const [previewScale, setPreviewScale] = useSavedState("print-previewScale", 0.6);
-  const [borderShowMode, setBorderShowMode] = useSavedState<"none" | "border" | "grid">("print-borderShowMode", "grid");
 
-  const paperWidth = paperSize === "custom" ? customPaperWidth : paperDimensions[paperSize].width;
-  const paperHeight = paperSize === "custom" ? customPaperHeight : paperDimensions[paperSize].height;
+  const margin = printSettings?.margin || { top: 10, bottom: 10, left: 10, right: 10 };
+  const printerMargin = printSettings?.printerMargin || { top: 5, bottom: 5, left: 5, right: 5 };
+  const spacing = printSettings?.spacing || { horizontal: 0, vertical: 0 };
+  const paperColumns = printSettings?.columns || 3;
+  const paperRows = printSettings?.rows || 8;
+  const skipItems = printSettings?.skipItems || 0;
+  const itemCopies = printSettings?.itemCopies || 1;
+  const paperSize = printSettings?.paperSize || "A4";
+  const customPaperSize = printSettings?.customPaperSize || { width: 210, height: 297 };
+  const borderShowMode = printSettings?.borderShowMode || "grid";
+
+  const paperWidth = paperSize === "custom" ? customPaperSize.width : paperDimensions[paperSize].width;
+  const paperHeight = paperSize === "custom" ? customPaperSize.height : paperDimensions[paperSize].height;
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  const itemWidth = (paperWidth - marginLeft - marginRight - horizontalSpacing) / paperColumns - horizontalSpacing;
-  const itemHeight = (paperHeight - marginTop - marginBottom - verticalSpacing) / paperRows - verticalSpacing;
+  const itemWidth = (paperWidth - margin.left - margin.right - spacing.horizontal) / paperColumns - spacing.horizontal;
+  const itemHeight = (paperHeight - margin.top - margin.bottom - spacing.vertical) / paperRows - spacing.vertical;
 
   const itemsPerRow = paperColumns;
   const rowsPerPage = paperRows;
 
-  const itemsIncludingSkipped = [...Array(skipItems).fill(<></>), ...items];
+  const itemsIncludingSkipped = [...Array(skipItems).fill(<></>)];
+  for (const item of items) {
+    for (let i = 0; i < itemCopies; i += 1) {
+      itemsIncludingSkipped.push(item);
+    }
+  }
 
   const rowsOfItems = [];
   for (let row_idx = 0; row_idx < itemsIncludingSkipped.length / itemsPerRow; row_idx += 1) {
@@ -110,19 +123,18 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
         <tr key={rowIdx}>
           {row.map(function (item, colIdx) {
             return (
-              <td>
+              <td key={colIdx}>
                 <div
-                  key={colIdx}
                   style={{
                     width: `${itemWidth}mm`,
                     height: `${itemHeight}mm`,
                     border: borderShowMode === "grid" ? "1px solid #000" : "none",
-                    paddingLeft: colIdx === 0 ? `${Math.max(printerMarginLeft - marginLeft, 0)}mm` : 0,
+                    paddingLeft: colIdx === 0 ? `${Math.max(printerMargin.left - margin.left, 0)}mm` : 0,
                     paddingRight:
-                      colIdx === paperColumns - 1 ? `${Math.max(printerMarginRight - marginRight, 0)}mm` : 0,
-                    paddingTop: rowIdx === 0 ? `${Math.max(printerMarginTop - marginTop, 0)}mm` : 0,
+                      colIdx === paperColumns - 1 ? `${Math.max(printerMargin.right - margin.right, 0)}mm` : 0,
+                    paddingTop: rowIdx === 0 ? `${Math.max(printerMargin.top - margin.top, 0)}mm` : 0,
                     paddingBottom:
-                      rowIdx === paperRows - 1 ? `${Math.max(printerMarginBottom - marginBottom, 0)}mm` : 0,
+                      rowIdx === paperRows - 1 ? `${Math.max(printerMargin.bottom - margin.bottom, 0)}mm` : 0,
                   }}
                 >
                   {item}
@@ -149,12 +161,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
           className="print-page-area"
           style={{
             border: borderShowMode !== "none" ? "1px solid #000" : "none",
-            height: `${paperHeight - marginTop - marginBottom}mm`,
-            width: `${paperWidth - marginLeft - marginRight}mm`,
-            marginTop: `calc(${marginTop}mm - ${borderShowMode !== "none" ? "1px" : "0px"})`,
-            marginLeft: `calc(${marginLeft}mm - ${borderShowMode !== "none" ? "1px" : "0px"})`,
-            marginRight: `calc(${marginRight}mm - ${borderShowMode !== "none" ? "1px" : "0px"})`,
-            marginBottom: `calc(${marginBottom}mm - ${borderShowMode !== "none" ? "1px" : "0px"})`,
+            height: `${paperHeight - margin.top - margin.bottom}mm`,
+            width: `${paperWidth - margin.left - margin.right}mm`,
+            marginTop: `calc(${margin.top}mm - ${borderShowMode !== "none" ? "1px" : "0px"})`,
+            marginLeft: `calc(${margin.left}mm - ${borderShowMode !== "none" ? "1px" : "0px"})`,
+            marginRight: `calc(${margin.right}mm - ${borderShowMode !== "none" ? "1px" : "0px"})`,
+            marginBottom: `calc(${margin.bottom}mm - ${borderShowMode !== "none" ? "1px" : "0px"})`,
           }}
         >
           <table
@@ -184,16 +196,8 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
       width={1200} // Set the modal width to accommodate the preview
     >
       <Row gutter={16}>
-        <Col
-          span={24}
-          style={{
-            whiteSpace: "pre-line",
-            marginBottom: "1em",
-          }}
-        >
-          {t("printing.generic.description")}
-        </Col>
         <Col span={14}>
+          {t("printing.generic.description")}
           <div
             style={{
               transform: "translateZ(0)",
@@ -232,7 +236,7 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                 }
 
                 .print-page table {
-                    border-spacing: ${horizontalSpacing}mm ${verticalSpacing}mm;
+                    border-spacing: ${spacing.horizontal}mm ${spacing.vertical}mm;
                     border-collapse: separate;
                 }
 
@@ -248,6 +252,8 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
         </Col>
         <Col span={10}>
           <Form labelAlign="left" colon={false} labelWrap={true} labelCol={{ span: 8 }} wrapperCol={{ span: 16 }}>
+            {extraSettingsStart}
+            <Divider />
             <Form.Item label={t("printing.generic.skipItems")}>
               <Row>
                 <Col span={12}>
@@ -256,7 +262,8 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                     max={30}
                     value={skipItems}
                     onChange={(value) => {
-                      setSkipItems(value);
+                      printSettings.skipItems = value;
+                      setPrintSettings(printSettings);
                     }}
                   />
                 </Col>
@@ -266,7 +273,34 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                     style={{ margin: "0 16px" }}
                     value={skipItems}
                     onChange={(value) => {
-                      setSkipItems(value ?? 1);
+                      printSettings.skipItems = value ?? 1;
+                      setPrintSettings(printSettings);
+                    }}
+                  />
+                </Col>
+              </Row>
+            </Form.Item>
+            <Form.Item label={t("printing.generic.itemCopies")}>
+              <Row>
+                <Col span={12}>
+                  <Slider
+                    min={1}
+                    max={3}
+                    value={itemCopies}
+                    onChange={(value) => {
+                      printSettings.itemCopies = value;
+                      setPrintSettings(printSettings);
+                    }}
+                  />
+                </Col>
+                <Col span={12}>
+                  <InputNumber
+                    min={1}
+                    style={{ margin: "0 16px" }}
+                    value={itemCopies}
+                    onChange={(value) => {
+                      printSettings.itemCopies = value ?? 1;
+                      setPrintSettings(printSettings);
                     }}
                   />
                 </Col>
@@ -283,7 +317,8 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                   { label: t("printing.generic.borders.grid"), value: "grid" },
                 ]}
                 onChange={(e: RadioChangeEvent) => {
-                  setBorderShowMode(e.target.value);
+                  printSettings.borderShowMode = e.target.value;
+                  setPrintSettings(printSettings);
                 }}
                 value={borderShowMode}
                 optionType="button"
@@ -333,7 +368,13 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
               </Collapse.Panel>
               <Collapse.Panel header={t("printing.generic.layoutSettings")} key="2">
                 <Form.Item label={t("printing.generic.paperSize")}>
-                  <Select value={paperSize} onChange={(value) => setPaperSize(value)}>
+                  <Select
+                    value={paperSize}
+                    onChange={(value) => {
+                      printSettings.paperSize = value;
+                      setPrintSettings(printSettings);
+                    }}
+                  >
                     {Object.keys(paperDimensions).map((key) => (
                       <Select.Option key={key} value={key}>
                         {key}
@@ -346,10 +387,14 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                   <Row align="middle">
                     <Col span={11}>
                       <InputNumber
-                        value={customPaperWidth}
+                        value={customPaperSize.width}
                         min={0.1}
                         addonAfter="mm"
-                        onChange={(value) => setCustomPaperWidth(value ?? 0)}
+                        onChange={(value) => {
+                          customPaperSize.width = value ?? 0;
+                          printSettings.customPaperSize = customPaperSize;
+                          setPrintSettings(printSettings);
+                        }}
                       />
                     </Col>
                     <Col span={2} style={{ textAlign: "center" }}>
@@ -357,10 +402,14 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                     </Col>
                     <Col span={11}>
                       <InputNumber
-                        value={customPaperHeight}
+                        value={customPaperSize.height}
                         min={0.1}
                         addonAfter="mm"
-                        onChange={(value) => setCustomPaperHeight(value ?? 0)}
+                        onChange={(value) => {
+                          customPaperSize.height = value ?? 0;
+                          printSettings.customPaperSize = customPaperSize;
+                          setPrintSettings(printSettings);
+                        }}
                       />
                     </Col>
                   </Row>
@@ -373,7 +422,8 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={5}
                         value={paperColumns}
                         onChange={(value) => {
-                          setPaperColumns(value);
+                          printSettings.columns = value;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -383,7 +433,8 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         style={{ margin: "0 16px" }}
                         value={paperColumns}
                         onChange={(value) => {
-                          setPaperColumns(value ?? 1);
+                          printSettings.columns = value ?? 1;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -397,7 +448,8 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={15}
                         value={paperRows}
                         onChange={(value) => {
-                          setPaperRows(value);
+                          printSettings.rows = value;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -407,7 +459,8 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         style={{ margin: "0 16px" }}
                         value={paperRows}
                         onChange={(value) => {
-                          setPaperRows(value ?? 1);
+                          printSettings.rows = value ?? 1;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -423,9 +476,11 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={50}
                         step={0.1}
                         tooltip={{ formatter: (value) => `${value} mm` }}
-                        value={marginLeft}
+                        value={margin.left}
                         onChange={(value) => {
-                          setMarginLeft(value);
+                          margin.left = value;
+                          printSettings.margin = margin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -433,10 +488,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                       <InputNumber
                         step={0.1}
                         style={{ margin: "0 16px" }}
-                        value={marginLeft}
+                        value={margin.left}
                         addonAfter="mm"
                         onChange={(value) => {
-                          setMarginLeft(value ?? 0);
+                          margin.left = value ?? 0;
+                          printSettings.margin = margin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -450,9 +507,11 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={50}
                         step={0.1}
                         tooltip={{ formatter: (value) => `${value} mm` }}
-                        value={marginTop}
+                        value={margin.top}
                         onChange={(value) => {
-                          setMarginTop(value);
+                          margin.top = value;
+                          printSettings.margin = margin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -460,10 +519,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                       <InputNumber
                         step={0.1}
                         style={{ margin: "0 16px" }}
-                        value={marginTop}
+                        value={margin.top}
                         addonAfter="mm"
                         onChange={(value) => {
-                          setMarginTop(value ?? 0);
+                          margin.top = value ?? 0;
+                          printSettings.margin = margin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -477,9 +538,11 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={50}
                         step={0.1}
                         tooltip={{ formatter: (value) => `${value} mm` }}
-                        value={marginRight}
+                        value={margin.right}
                         onChange={(value) => {
-                          setMarginRight(value);
+                          margin.right = value;
+                          printSettings.margin = margin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -487,10 +550,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                       <InputNumber
                         step={0.1}
                         style={{ margin: "0 16px" }}
-                        value={marginRight}
+                        value={margin.right}
                         addonAfter="mm"
                         onChange={(value) => {
-                          setMarginRight(value ?? 0);
+                          margin.right = value ?? 0;
+                          printSettings.margin = margin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -504,9 +569,11 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={50}
                         step={0.1}
                         tooltip={{ formatter: (value) => `${value} mm` }}
-                        value={marginBottom}
+                        value={margin.bottom}
                         onChange={(value) => {
-                          setMarginBottom(value);
+                          margin.bottom = value;
+                          printSettings.margin = margin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -514,10 +581,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                       <InputNumber
                         step={0.1}
                         style={{ margin: "0 16px" }}
-                        value={marginBottom}
+                        value={margin.bottom}
                         addonAfter="mm"
                         onChange={(value) => {
-                          setMarginBottom(value ?? 0);
+                          margin.bottom = value ?? 0;
+                          printSettings.margin = margin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -533,9 +602,11 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={50}
                         step={0.1}
                         tooltip={{ formatter: (value) => `${value} mm` }}
-                        value={printerMarginLeft}
+                        value={printerMargin.left}
                         onChange={(value) => {
-                          setPrinterMarginLeft(value);
+                          printerMargin.left = value;
+                          printSettings.printerMargin = printerMargin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -543,10 +614,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                       <InputNumber
                         step={0.1}
                         style={{ margin: "0 16px" }}
-                        value={printerMarginLeft}
+                        value={printerMargin.left}
                         addonAfter="mm"
                         onChange={(value) => {
-                          setPrinterMarginLeft(value ?? 0);
+                          printerMargin.left = value ?? 0;
+                          printSettings.printerMargin = printerMargin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -560,9 +633,11 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={50}
                         step={0.1}
                         tooltip={{ formatter: (value) => `${value} mm` }}
-                        value={printerMarginTop}
+                        value={printerMargin.top}
                         onChange={(value) => {
-                          setPrinterMarginTop(value);
+                          printerMargin.top = value;
+                          printSettings.printerMargin = printerMargin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -570,10 +645,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                       <InputNumber
                         step={0.1}
                         style={{ margin: "0 16px" }}
-                        value={printerMarginTop}
+                        value={printerMargin.top}
                         addonAfter="mm"
                         onChange={(value) => {
-                          setPrinterMarginTop(value ?? 0);
+                          printerMargin.top = value ?? 0;
+                          printSettings.printerMargin = printerMargin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -587,9 +664,11 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={50}
                         step={0.1}
                         tooltip={{ formatter: (value) => `${value} mm` }}
-                        value={printerMarginRight}
+                        value={printerMargin.right}
                         onChange={(value) => {
-                          setPrinterMarginRight(value);
+                          printerMargin.right = value;
+                          printSettings.printerMargin = printerMargin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -597,10 +676,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                       <InputNumber
                         step={0.1}
                         style={{ margin: "0 16px" }}
-                        value={printerMarginRight}
+                        value={printerMargin.right}
                         addonAfter="mm"
                         onChange={(value) => {
-                          setPrinterMarginRight(value ?? 0);
+                          printerMargin.right = value ?? 0;
+                          printSettings.printerMargin = printerMargin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -614,9 +695,11 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={50}
                         step={0.1}
                         tooltip={{ formatter: (value) => `${value} mm` }}
-                        value={printerMarginBottom}
+                        value={printerMargin.bottom}
                         onChange={(value) => {
-                          setPrinterMarginBottom(value);
+                          printerMargin.bottom = value;
+                          printSettings.printerMargin = printerMargin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -624,10 +707,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                       <InputNumber
                         step={0.1}
                         style={{ margin: "0 16px" }}
-                        value={printerMarginBottom}
+                        value={printerMargin.bottom}
                         addonAfter="mm"
                         onChange={(value) => {
-                          setPrinterMarginBottom(value ?? 0);
+                          printerMargin.bottom = value ?? 0;
+                          printSettings.printerMargin = printerMargin;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -642,9 +727,11 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={20}
                         step={0.1}
                         tooltip={{ formatter: (value) => `${value} mm` }}
-                        value={horizontalSpacing}
+                        value={spacing.horizontal}
                         onChange={(value) => {
-                          setHorizontalSpacing(value);
+                          spacing.horizontal = value;
+                          printSettings.spacing = spacing;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -652,10 +739,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                       <InputNumber
                         step={0.1}
                         style={{ margin: "0 16px" }}
-                        value={horizontalSpacing}
+                        value={spacing.horizontal}
                         addonAfter="mm"
                         onChange={(value) => {
-                          setHorizontalSpacing(value ?? 0);
+                          spacing.horizontal = value ?? 0;
+                          printSettings.spacing = spacing;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -669,9 +758,11 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                         max={20}
                         step={0.1}
                         tooltip={{ formatter: (value) => `${value} mm` }}
-                        value={verticalSpacing}
+                        value={spacing.vertical}
                         onChange={(value) => {
-                          setVerticalSpacing(value);
+                          spacing.vertical = value;
+                          printSettings.spacing = spacing;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>
@@ -679,10 +770,12 @@ const PrintingDialog: React.FC<PrintingDialogProps> = ({ items, style, extraSett
                       <InputNumber
                         step={0.1}
                         style={{ margin: "0 16px" }}
-                        value={verticalSpacing}
+                        value={spacing.vertical}
                         addonAfter="mm"
                         onChange={(value) => {
-                          setVerticalSpacing(value ?? 0);
+                          spacing.vertical = value ?? 0;
+                          printSettings.spacing = spacing;
+                          setPrintSettings(printSettings);
                         }}
                       />
                     </Col>

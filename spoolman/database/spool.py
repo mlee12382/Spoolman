@@ -9,6 +9,7 @@ from sqlalchemy import case, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager, joinedload
+from sqlalchemy.sql.functions import coalesce
 
 from spoolman.api.v1.models import EventType, Spool, SpoolEvent
 from spoolman.database import filament, models
@@ -108,7 +109,7 @@ async def get_by_id(db: AsyncSession, spool_id: int) -> models.Spool:
     return spool
 
 
-async def find(
+async def find(  # noqa: C901, PLR0912
     *,
     db: AsyncSession,
     filament_name: Optional[str] = None,
@@ -165,11 +166,27 @@ async def find(
     if sort_by is not None:
         for fieldstr, order in sort_by.items():
             sorts = []
-            if fieldstr in {"remaining_weight", "remaining_length"}:
-                sorts.append(models.Spool.initial_weight - models.Spool.spool_weight - models.Spool.used_weight)
+            if fieldstr == "remaining_weight":
+                sorts.append(coalesce(models.Spool.initial_weight, models.Filament.weight) - models.Spool.used_weight)
+            elif fieldstr == "remaining_length":
+                # Simplified weight -> length formula. Absolute value is not correct but the proportionality is still
+                # kept, which means the sort order is correct.
+                sorts.append(
+                    (coalesce(models.Spool.initial_weight, models.Filament.weight) - models.Spool.used_weight)
+                    / models.Filament.density
+                    / (models.Filament.diameter * models.Filament.diameter),
+                )
+            elif fieldstr == "used_length":
+                sorts.append(
+                    models.Spool.used_weight
+                    / models.Filament.density
+                    / (models.Filament.diameter * models.Filament.diameter),
+                )
             elif fieldstr == "filament.combined_name":
                 sorts.append(models.Vendor.name)
                 sorts.append(models.Filament.name)
+            elif fieldstr == "price":
+                sorts.append(coalesce(models.Spool.price, models.Filament.price))
             else:
                 sorts.append(parse_nested_field(models.Spool, fieldstr))
 
@@ -244,7 +261,7 @@ async def use_weight_safe(db: AsyncSession, spool_id: int, weight: float) -> Non
         .where(models.Spool.id == spool_id)
         .values(
             used_weight=case(
-                (models.Spool.used_weight + weight >= 0.0, models.Spool.used_weight + weight),  # noqa: PLR2004
+                (models.Spool.used_weight + weight >= 0.0, models.Spool.used_weight + weight),
                 else_=0.0,  # Set used_weight to 0 if the result would be negative
             ),
         ),

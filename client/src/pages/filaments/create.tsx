@@ -1,7 +1,7 @@
 import React from "react";
-import { HttpError, IResourceComponentsProps, useTranslate } from "@refinedev/core";
+import { HttpError, IResourceComponentsProps, useInvalidate, useTranslate } from "@refinedev/core";
 import { Create, useForm, useSelect } from "@refinedev/antd";
-import { Form, Input, Select, InputNumber, ColorPicker, Button, Typography } from "antd";
+import { Form, Input, Select, InputNumber, ColorPicker, Button, Typography, Modal, Radio } from "antd";
 import TextArea from "antd/es/input/TextArea";
 import { numberFormatter, numberParser } from "../../utils/parsing";
 import { IVendor } from "../vendors/model";
@@ -11,6 +11,12 @@ import { ExtraFieldFormItem, StringifiedExtras } from "../../components/extraFie
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { getCurrencySymbol, useCurrency } from "../../utils/settings";
+import { searchMatches } from "../../utils/filtering";
+import { ExternalFilament, useGetExternalDBFilaments } from "../../utils/queryExternalDB";
+import { formatFilamentLabel } from "../spools/functions";
+import { FilamentImportModal } from "../../components/filamentImportModal";
+import { getOrCreateVendorFromExternal } from "../vendors/functions";
+import { MultiColorPicker } from "../../components/multiColorPicker";
 
 dayjs.extend(utc);
 
@@ -18,15 +24,22 @@ interface CreateOrCloneProps {
   mode: "create" | "clone";
 }
 
+type IFilamentRequest = Omit<IFilamentParsedExtras, "id" | "registered"> & {
+  vendor_id: number;
+};
+
 export const FilamentCreate: React.FC<IResourceComponentsProps & CreateOrCloneProps> = (props) => {
   const t = useTranslate();
   const extraFields = useGetFields(EntityType.filament);
   const currency = useCurrency();
+  const [isImportExtOpen, setIsImportExtOpen] = React.useState(false);
+  const invalidate = useInvalidate();
+  const [colorType, setColorType] = React.useState<"single" | "multi">("single");
 
   const { form, formProps, formLoading, onFinish, redirect } = useForm<
     IFilament,
     HttpError,
-    IFilamentParsedExtras,
+    IFilamentRequest,
     IFilamentParsedExtras
   >();
 
@@ -41,16 +54,37 @@ export const FilamentCreate: React.FC<IResourceComponentsProps & CreateOrClonePr
     }
   }
 
-  const handleSubmit = async (redirectTo: "list" | "edit" | "create") => {
+  const handleSubmit = async (redirectTo: "list" | "create") => {
     const values = StringifiedExtras(await form.validateFields());
     await onFinish(values);
-    redirect(redirectTo, (values as IFilament).id);
+    redirect(redirectTo);
   };
 
-  const { selectProps } = useSelect<IVendor>({
+  const { selectProps: vendorSelect } = useSelect<IVendor>({
     resource: "vendor",
     optionLabel: "name",
   });
+
+  const importFilament = async (filament: ExternalFilament) => {
+    const vendor = await getOrCreateVendorFromExternal(filament.manufacturer);
+    await invalidate({
+      resource: "vendor",
+      invalidates: ["list", "detail"],
+    });
+
+    form.setFieldsValue({
+      name: filament.name,
+      vendor_id: vendor.id,
+      material: filament.material,
+      density: filament.density,
+      diameter: filament.diameter,
+      weight: filament.weight,
+      spool_weight: filament.spool_weight || undefined,
+      color_hex: filament.color_hex,
+      settings_extruder_temp: filament.extruder_temp || undefined,
+      settings_bed_temp: filament.bed_temp || undefined,
+    });
+  };
 
   // Use useEffect to update the form's initialValues when the extra fields are loaded
   // This is necessary because the form is rendered before the extra fields are loaded
@@ -67,6 +101,13 @@ export const FilamentCreate: React.FC<IResourceComponentsProps & CreateOrClonePr
     <Create
       title={props.mode === "create" ? t("filament.titles.create") : t("filament.titles.clone")}
       isLoading={formLoading}
+      headerButtons={() => (
+        <>
+          <Button type="primary" onClick={() => setIsImportExtOpen(true)}>
+            {t("filament.form.import_external")}
+          </Button>
+        </>
+      )}
       footerButtons={() => (
         <>
           <Button type="primary" onClick={() => handleSubmit("list")}>
@@ -78,6 +119,14 @@ export const FilamentCreate: React.FC<IResourceComponentsProps & CreateOrClonePr
         </>
       )}
     >
+      <FilamentImportModal
+        isOpen={isImportExtOpen}
+        onImport={(value) => {
+          setIsImportExtOpen(false);
+          importFilament(value);
+        }}
+        onClose={() => setIsImportExtOpen(false)}
+      />
       <Form {...formProps} layout="vertical">
         <Form.Item
           label={t("filament.fields.name")}
@@ -101,7 +150,7 @@ export const FilamentCreate: React.FC<IResourceComponentsProps & CreateOrClonePr
           ]}
         >
           <Select
-            {...selectProps}
+            {...vendorSelect}
             allowClear
             filterSort={(a, b) => {
               return a?.label && b?.label
@@ -113,20 +162,62 @@ export const FilamentCreate: React.FC<IResourceComponentsProps & CreateOrClonePr
             }
           />
         </Form.Item>
-        <Form.Item
-          label={t("filament.fields.color_hex")}
-          name={["color_hex"]}
-          rules={[
-            {
-              required: false,
-            },
-          ]}
-          getValueFromEvent={(e) => {
-            return e?.toHex();
-          }}
-        >
-          <ColorPicker format="hex" />
+        <Form.Item label={t("filament.fields.color_hex")}>
+          <Radio.Group
+            onChange={(value) => {
+              setColorType(value.target.value);
+            }}
+            defaultValue={colorType}
+            value={colorType}
+          >
+            <Radio.Button value={"single"}>{t("filament.fields.single_color")}</Radio.Button>
+            <Radio.Button value={"multi"}>{t("filament.fields.multi_color")}</Radio.Button>
+          </Radio.Group>
         </Form.Item>
+        {colorType == "single" && (
+          <Form.Item
+            name={"color_hex"}
+            rules={[
+              {
+                required: false,
+              },
+            ]}
+            getValueFromEvent={(e) => {
+              return e?.toHex();
+            }}
+          >
+            <ColorPicker format="hex" />
+          </Form.Item>
+        )}
+        {colorType == "multi" && (
+          <Form.Item
+            name={"multi_color_direction"}
+            help={t("filament.fields_help.multi_color_direction")}
+            rules={[
+              {
+                required: true,
+              },
+            ]}
+            initialValue={"coaxial"}
+          >
+            <Radio.Group>
+              <Radio.Button value={"coaxial"}>{t("filament.fields.coaxial")}</Radio.Button>
+              <Radio.Button value={"longitudinal"}>{t("filament.fields.longitudinal")}</Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+        )}
+        {colorType == "multi" && (
+          <Form.Item
+            name={"multi_color_hexes"}
+            rules={[
+              {
+                required: false,
+              },
+            ]}
+          >
+            <MultiColorPicker min={2} max={14} />
+          </Form.Item>
+        )}
         <Form.Item
           label={t("filament.fields.material")}
           help={t("filament.fields_help.material")}

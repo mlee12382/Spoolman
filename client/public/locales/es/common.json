@@ -76,7 +76,11 @@
             "archived": "Archivado",
             "measured_weight": "Peso Medido",
             "weight_to_use": "Peso",
-            "price": "Precio"
+            "price": "Precio",
+            "initial_weight": "Peso inicial",
+            "spool_weight": "Peso vacio",
+            "filament_internal": "Interno",
+            "filament_external": "Externo"
         },
         "fields_help": {
             "used_weight": "Cuanto filamento ha sido usado de la bobina. Una bobina nueva debería tener 0g usados.",
@@ -85,7 +89,10 @@
             "weight_to_use": "Elegir el peso a usar. El peso medido solo está disponible si existe el valor de peso del carrete seleccionado.",
             "measured_weight": "Cuanto pesa el filamento y la bobina.",
             "remaining_weight": "Cuanto filamento resta en la bobina. Para una bobina nueva el peso debe ser igual al peso indicado de fábrica.",
-            "price": "Precio de una bobina completa. Si no se establece, se asumirá en su lugar el precio del filamento."
+            "price": "Precio de una bobina completa. Si no se establece, se asumirá en su lugar el precio del filamento.",
+            "initial_weight": "El peso inicial del filamento en el carrete (peso neto). Utilizará el peso del objeto de filamento si no está configurado.",
+            "spool_weight": "El peso de la bobina cuando está vacía. Dejar vacío para usar el valor del filamento o del fabricante.",
+            "external_filament": "Has elegido un filamento desde la base de datos externa. Un objeto filamento (y posiblemente un objeto fabricante) será creado automáticamente cuando crees este carrete. Esto puede crear objetos filamento duplicados si ya has creado un objeto filamento para este filamento."
         },
         "titles": {
             "create": "Crear Bobina",
@@ -123,10 +130,11 @@
             "settings_extruder_temp": "Temp. del Extrusor",
             "settings_bed_temp": "Temp. de Cama",
             "color_hex": "Color",
-            "spools": "Mostrar las Bobinas"
+            "spools": "Mostrar las Bobinas",
+            "external_id": "ID Externo"
         },
         "fields_help": {
-            "name": "Nombre del filamento, para distinguirlo de otros del mismo fabricante. Por ejemplo, debería contener el nombre del color.",
+            "name": "Nombre del filamento, para distinguir este tipo de filamento entre otros del mismo fabricante. Debe contener por ejemplo: el color.",
             "material": "ej. PLA, ABS, PETG, etc.",
             "price": "Precio de una bobina completa.",
             "weight": "El peso de una bobina entera (peso neto). Esta cifra no debe incluir el peso de la bobina vacía, solo el filamento. Es, normalmente, el peso escrito en la etiqueta de la bobina.",
@@ -142,7 +150,9 @@
             "show_title": "[Filamento #{{id}}] {{name}}"
         },
         "form": {
-            "filament_updated": "Este filamento ha sido actualizado por alguien/algo más desde que abrió esta página. ¡Al guardar, se sobrescribirán los cambios!"
+            "filament_updated": "Este filamento ha sido actualizado por alguien/algo más desde que abrió esta página. ¡Al guardar, se sobrescribirán los cambios!",
+            "import_external": "Importado desde un externo",
+            "import_external_description": "Seleccione un filamento en la lista para rellenar sus detalles de manera automática en el formulario de creación del filamento. Esto sobrescribirá cualquier información que hayas escrito en el formulario.<br><br>Un objeto fabricante será creado automáticamente cuando presiones Ok, si es necesario."
         },
         "buttons": {
             "add_spool": "Añadir bobina"
@@ -154,18 +164,23 @@
             "id": "ID",
             "name": "Nombre",
             "registered": "Registrado",
-            "comment": "Comentarios"
+            "comment": "Comentarios",
+            "empty_spool_weight": "Peso de bobina vacía",
+            "external_id": "ID Externa"
         },
         "titles": {
-            "create": "Crear Fabricante",
-            "clone": "Duplicar Fabricante",
-            "edit": "Editar Fabricante",
+            "create": "Crear un fabricante",
+            "clone": "Duplicar un fabricante",
+            "edit": "Editar un fabricante",
             "list": "Fabricantes",
-            "show": "Mostrar Fabricantes",
+            "show": "Mostrar Fabricante",
             "show_title": "[Fabricante #{{id}}] {{name}}"
         },
         "form": {
             "vendor_updated": "Este fabricante ha sido actualizado por alguien/algo desde que abrió esta página. ¡Al guardar, se sobrescribirán los cambios!"
+        },
+        "fields_help": {
+            "empty_spool_weight": "El peso de una bobina vacía de este fabricante."
         }
     },
     "table": {
@@ -190,10 +205,10 @@
         },
         "vendor": {
             "list": "Fabricantes | Spoolman",
-            "show": "#{{id}} Mostrar Fabricante | Spoolman",
-            "edit": "#{{id}} Editar Fabricante | Spoolman",
-            "create": "Crear Fabricante | Spoolman",
-            "clone": "#{{id}} Duplicar Fabricante | Spoolman"
+            "show": "#{{id}} Mostrar el fabricante | Spoolman",
+            "edit": "#{{id}} Editar el fabricante | Spoolman",
+            "create": "Crear un fabricante | Spoolman",
+            "clone": "#{{id}} Duplicar un fabricante | Spoolman"
         },
         "home": {
             "list": "Inicio | Spoolman"
