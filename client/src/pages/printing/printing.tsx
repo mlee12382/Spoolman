@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import { ISpool } from "../../pages/spools/model";
+import { ISpool } from "../spools/model";
 import { useGetSetting, useSetSetting } from "../../utils/querySettings";
 import { v4 as uuidv4 } from "uuid";
 
@@ -31,7 +31,7 @@ export interface SpoolQRCodePrintSettings {
 }
 
 export function useGetPrintSettings(): SpoolQRCodePrintSettings[] | undefined {
-  const { data } = useGetSetting("print_settings");
+  const { data } = useGetSetting("print_presets");
   if (!data) return;
   const parsed: SpoolQRCodePrintSettings[] =
     data && data.value ? JSON.parse(data.value) : ([] as SpoolQRCodePrintSettings[]);
@@ -45,7 +45,7 @@ export function useGetPrintSettings(): SpoolQRCodePrintSettings[] | undefined {
 }
 
 export function useSetPrintSettings(): (spoolQRCodePrintSettings: SpoolQRCodePrintSettings[]) => void {
-  const mut = useSetSetting("print_settings");
+  const mut = useSetSetting("print_presets");
 
   return (spoolQRCodePrintSettings: SpoolQRCodePrintSettings[]) => {
     mut.mutate(spoolQRCodePrintSettings);
